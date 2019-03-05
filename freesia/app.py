@@ -38,7 +38,7 @@ class Freesia:
         print(request.path)
         target, params = self.url_map.get(request.path, request.method)
         if target:
-            return target(request, *params)
+            return await target(request, *params)
         else:
             raise web.HTTPNotFound()
 

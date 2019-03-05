@@ -4,12 +4,12 @@ app = Freesia()
 
 
 @app.route('/')
-def index(request):
+async def index(request):
     return response("Hello, world!")
 
 
 @app.route('/hello/<name>')
-def hello(request, name):
+async def hello(request, name):
     return response("Hello, " + name + "!")
 
 
