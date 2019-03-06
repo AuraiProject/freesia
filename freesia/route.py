@@ -5,7 +5,7 @@ import re
 import itertools
 from inspect import signature, iscoroutinefunction
 from abc import ABC, abstractmethod
-from typing import Callable, MutableMapping, Tuple, Any, Iterable, Union, List
+from typing import Callable, MutableMapping, Tuple, Any, Iterable, Union, List, Sized
 
 from aiohttp import web
 
@@ -208,6 +208,22 @@ class Route(AbstractRoute):
                     raise web.HTTPBadRequest()
             return params
 
+    def build_url(self, params: Sized):
+        if len(params) != len(self.in_filters):
+            raise ValueError("Params are not matching.")
+        res = []
+        index = 0
+        for name, cast in self.builder:
+            if name is None:
+                res.append(cast)
+            else:
+                try:
+                    res.append(cast(params[index]))
+                except ValueError:
+                    raise
+                index += 1
+        return "".join(res)
+
 
 class Router(AbstractRouter):
     """
@@ -217,6 +233,7 @@ class Router(AbstractRouter):
     def __init__(self):
         self.static_url_map = {}
         self.method_map = {}
+        self.endpoint_map = {}
 
     def add_route(self, route: Route) -> None:
         """
@@ -225,6 +242,9 @@ class Router(AbstractRouter):
         :param route: the instance of the :class:`Route`
         :return: None
         """
+        self.endpoint_map.setdefault(route.endpoint, [])
+        self.endpoint_map[route.endpoint].append(route)
+
         if route.is_static:
             self.static_url_map.setdefault(route.regex_pattern, [])
             self.static_url_map[route.regex_pattern].append(route)
@@ -280,3 +300,13 @@ class Router(AbstractRouter):
             raise web.HTTPMethodNotAllowed(method, allowed_methods)
 
         raise web.HTTPNotFound()
+
+    def build_url(self, endpoint, params) -> str:
+        if endpoint not in self.endpoint_map:
+            raise ValueError("The endpoint {} doesn't exist.".format(endpoint))
+        for r in self.endpoint_map[endpoint]:
+            try:
+                return r.build_url(params)
+            except ValueError:
+                continue
+        raise ValueError("Params have invalid value.")
