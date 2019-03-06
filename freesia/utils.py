@@ -37,3 +37,12 @@ async def jsonify(
             text = await dumps(data)
     return Response(text=text, body=body, status=status, reason=reason,
                     headers=headers, content_type=content_type)
+
+
+def redirect(url, permanent=False):
+    return Response(
+        status=301 if permanent else 302,
+        headers={
+            "Location": str(url)
+        }
+    )

@@ -29,6 +29,7 @@ class Freesia:
 
     def __init__(self):
         self.rules = []
+        self.middleware = []
         self.groups = {}
         self.url_map = self.url_map_cls()
 
@@ -97,7 +98,31 @@ class Freesia:
                             )
         return Response(text=str(res))
 
-    async def handler(self, request: web.BaseRequest):
+    async def traverse_middleware(self, request: web.BaseRequest, user_handler: Callable) -> Any:
+        """
+        Call all registered middleware.
+        """
+        last_handler = user_handler
+        for m in self.middleware:
+            async def h(next_handler=m, last_handler=last_handler):
+                return await next_handler(request, last_handler)
+
+            last_handler = h
+        return await last_handler()
+
+    async def dispatch_request(self, request: web.BaseRequest) -> Response:
+        """
+        Dispatch request.
+
+        :param request: the instance of :class:`aiohttp.web.BaseRequest`
+        :return:
+        """
+        target, params = self.url_map.get(request.path, request.method)
+
+        res = await target(request, *params)
+        return res
+
+    async def handler(self, request: web.BaseRequest) -> Response:
         """
         hands out a incoming request
 
@@ -105,8 +130,13 @@ class Freesia:
         :return: result
         """
         print(request.path)
-        target, params = self.url_map.get(request.path, request.method)
-        res = await self.cast(await target(request, *params))
+
+        async def user_handler():
+            return await self.dispatch_request(request)
+
+        res = await self.cast(
+            await self.traverse_middleware(request, user_handler)
+        )
         return res
 
     async def serve(self, host: str, port: int):
@@ -151,3 +181,9 @@ class Freesia:
             raise ValueError("The group `{}` has been registered!".format(group.name))
         self.groups[group.name] = group
         group.register(self)
+
+    def use(self, middleware: Iterable):
+        for m in middleware:
+            if not iscoroutinefunction(m):
+                raise ValueError("Middleware {} should be awaitable.".format(m.__name__))
+            self.middleware.append(m)
