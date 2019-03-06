@@ -2,7 +2,7 @@
 This module implements the WSGI app of the web framework.
 """
 import asyncio
-from typing import Any, Callable, MutableMapping
+from typing import Any, Callable, MutableMapping, Tuple, Union
 from pprint import pprint as print
 
 from aiohttp import web
@@ -28,6 +28,9 @@ class Freesia:
 
         return decorator
 
+    def set_filter(self, name: str, url_filter: Tuple[str, Union[None, Callable], Union[None, Callable]]):
+        self.route_cls.set_filter(name, url_filter)
+
     def add_route(self, rule: str, method: str, target: Callable, options: MutableMapping):
         r = self.route_cls(rule, method, target, options)
         self.rules.append(r)
@@ -37,10 +40,7 @@ class Freesia:
     async def handler(self, request: web.BaseRequest):
         print(request.path)
         target, params = self.url_map.get(request.path, request.method)
-        if target:
-            return await target(request, *params)
-        else:
-            raise web.HTTPNotFound()
+        return await target(request, *params)
 
     async def serve(self, host: str, port: int):
         server = web.Server(self.handler)

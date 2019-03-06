@@ -2,7 +2,8 @@
 This module implements the route class of the framework.
 """
 import re
-from inspect import signature
+import itertools
+from inspect import signature, iscoroutinefunction
 from abc import ABC, abstractmethod
 from typing import Callable, MutableMapping, Tuple, Any, Iterable, Union, List
 
@@ -41,7 +42,14 @@ class Route(AbstractRoute):
     url_filters['default'] = url_filters["str"]
 
     def __init__(self, rule, methods, target, options):
-        super().__init__(rule, methods, target, options)
+        # sometimes we might recombine the cls so we display the class that specified for use.
+        super(self.__class__, self).__init__(rule, methods, target, options)
+
+        if not iscoroutinefunction(target):
+            raise ValueError("The route function `{}` should be awaitable.".format(target.__name__))
+        if isinstance(methods, str):
+            raise ValueError("The param `methods` should be wrapped with the container.")
+
         self.rule = rule
         self.methods = set(methods)
         self.target = target
@@ -55,19 +63,18 @@ class Route(AbstractRoute):
         if "<" not in rule:
             self.is_static = True
         self.parse_pattern()
-        if "checking_param" not in options or options["checking_param"]:
-            if not self.param_check():
-                raise ValueError(
-                    "The rule asks for {} params, but the endpoint {} does not matching.".format(
-                        len(self.in_filters), self.endpoint
-                    ))
+        if ("checking_param" not in options or options["checking_param"]) and not self.param_check():
+            raise ValueError(
+                "The rule asks for {} params, but the endpoint {} does not matching.".format(
+                    len(self.in_filters), self.endpoint
+                ))
 
     @classmethod
-    def set_filter(cls, name, url_filter):
+    def set_filter(cls, name: str, url_filter: Tuple[str, Union[None, Callable], Union[None, Callable]]):
         cls.url_filters[name] = url_filter
 
     @classmethod
-    def iter_token(cls, rule: str):
+    def iter_token(cls, rule: str) -> Tuple[str, str]:
         offset, prefix = 0, ''
         for match in cls.rule_syntax.finditer(rule):
             prefix += rule[offset: match.start()]
@@ -85,7 +92,7 @@ class Route(AbstractRoute):
         if offset <= len(rule) or prefix:
             yield prefix + rule[offset:], None
 
-    def parse_pattern(self):
+    def parse_pattern(self) -> None:
         for url_filter, name in self.iter_token(self.rule):
             if name is None:
                 self.regex_pattern += url_filter
@@ -102,9 +109,10 @@ class Route(AbstractRoute):
                 self.in_filters[name] = in_filter
                 self.builder.append((name, out_filter))
 
-    def param_check(self):
+    def param_check(self) -> bool:
         p = signature(self.target).parameters
         if len(self.in_filters) != len(list(p.items())) - 1:
+            # the first param is the instance of the :class:`Freesia.Request`
             return False
         return True
 
@@ -130,7 +138,7 @@ class Router(AbstractRouter):
         self.static_url_map = {}
         self.method_map = {}
 
-    def add_route(self, route: Route):
+    def add_route(self, route: Route) -> None:
         if route.is_static:
             self.static_url_map.setdefault(route.regex_pattern, [])
             self.static_url_map[route.regex_pattern].append(route)
@@ -139,16 +147,36 @@ class Router(AbstractRouter):
                 self.method_map.setdefault(m, [])
                 self.method_map[m].append(route)
 
-    def get(self, rule: str, method: str):
-        if rule in self.static_url_map:
-            for route in self.static_url_map[rule]:
-                if method in route.methods:
-                    return route.target, tuple()
-        elif method not in self.method_map:
+    def get_from_static_url(self, rule: str, method: str) -> Tuple[Callable, Tuple]:
+        if rule not in self.static_url_map:
             raise web.HTTPNotFound()
+
+        allowed_methods = set()
+        for route in self.static_url_map[rule]:
+            for m in route.methods:
+                allowed_methods.add(m)
+            if method in route.methods:
+                return route.target, tuple()
         else:
-            for r in self.method_map[method]:
-                params = r.match(rule, method)
-                if params:
-                    return r.target, params
+            raise web.HTTPMethodNotAllowed(method, allowed_methods)
+
+    def get(self, rule: str, method: str) -> Tuple[Callable, Tuple]:
+        if rule in self.static_url_map:
+            return self.get_from_static_url(rule, method)
+
+        if method not in self.method_map:
+            raise web.HTTPNotFound()
+
+        for r in self.method_map[method]:
+            params = r.match(rule, method)
+            if params:
+                return r.target, params
+
+        allowed_methods = set()
+        for r in itertools.chain(*self.method_map.values()):
+            if r.match(rule, method):
+                allowed_methods.add(r.method)
+        if allowed_methods:
+            raise web.HTTPMethodNotAllowed(method, allowed_methods)
+
         raise web.HTTPNotFound()
