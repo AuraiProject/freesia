@@ -2,10 +2,11 @@
 This module implements the WSGI app of the web framework.
 """
 import asyncio
-from typing import Any, Callable, MutableMapping, Tuple, Union
+from typing import Any, Callable, MutableMapping, Tuple, Union, Container, Sized
 from pprint import pprint as print
 
 from aiohttp import web
+from aiohttp.web import Response
 
 from .route import Route, Router
 
@@ -69,6 +70,26 @@ class Freesia:
         self.url_map.add_route(r)
         return r
 
+    def cast(self, res: Any) -> Response:
+        """
+        Cast the res made by the user's handler to the normal response.
+
+        :param res: route returned value
+        :return: the instance of :class:`freesia.response.Response`
+        """
+        if isinstance(res, Response): return res
+        if isinstance(res, str) or isinstance(res, bytes):
+            return Response(text=str(res))
+        if isinstance(res, Container) and isinstance(res, Sized):
+            if len(res) > 3:
+                raise ValueError("Invalid response.")
+
+            return Response(text=res[0],
+                            status=res[1] if len(res) >= 1 else 200,
+                            reason=res[2] if len(res) >= 2 else "ok",
+                            )
+        return Response(text=str(res))
+
     async def handler(self, request: web.BaseRequest):
         """
         hands out a incoming request
@@ -78,7 +99,8 @@ class Freesia:
         """
         print(request.path)
         target, params = self.url_map.get(request.path, request.method)
-        return await target(request, *params)
+        res = self.cast(await target(request, *params))
+        return res
 
     async def serve(self, host: str, port: int):
         """
