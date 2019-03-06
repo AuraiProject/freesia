@@ -23,11 +23,13 @@ class Freesia:
     #: See more information in :class:`freesia.route.Router` and :class:`freesia.route.AbstractRouter`.
     url_map_cls = Router
     #: collected routes
-    rules = []
+    rules = None
     #: collected groups
-    groups = {}
+    groups = None
 
     def __init__(self):
+        self.rules = []
+        self.groups = {}
         self.url_map = self.url_map_cls()
 
     def route(self, rule: str, **options: Any) -> Callable:
