@@ -1,8 +1,9 @@
 """
-This module implements the WSGI app of the web framework.
+This module implements the async app of the web framework.
 """
 import asyncio
-from typing import Any, Callable, MutableMapping, Tuple, Union, Container, Sized
+from inspect import iscoroutinefunction
+from typing import Any, Callable, MutableMapping, Tuple, Union, Container, Sized, Iterable
 from pprint import pprint as print
 
 from aiohttp import web
@@ -23,6 +24,8 @@ class Freesia:
     url_map_cls = Router
     #: collected routes
     rules = []
+    #: collected groups
+    groups = {}
 
     def __init__(self):
         self.url_map = self.url_map_cls()
@@ -55,7 +58,7 @@ class Freesia:
         """
         self.route_cls.set_filter(name, url_filter)
 
-    def add_route(self, rule: str, method: str, target: Callable, options: MutableMapping):
+    def add_route(self, rule: str, method: Iterable[str], target: Callable, options: MutableMapping) -> None:
         """
         Internal method of :func:`route`.
 
@@ -68,15 +71,17 @@ class Freesia:
         r = self.route_cls(rule, method, target, options)
         self.rules.append(r)
         self.url_map.add_route(r)
-        return r
 
-    def cast(self, res: Any) -> Response:
+    async def cast(self, res: Any) -> Response:
         """
         Cast the res made by the user's handler to the normal response.
 
         :param res: route returned value
         :return: the instance of :class:`freesia.response.Response`
         """
+        if iscoroutinefunction(res):
+            return await self.cast(await res())
+
         if isinstance(res, Response): return res
         if isinstance(res, str) or isinstance(res, bytes):
             return Response(text=str(res))
@@ -99,7 +104,7 @@ class Freesia:
         """
         print(request.path)
         target, params = self.url_map.get(request.path, request.method)
-        res = self.cast(await target(request, *params))
+        res = await self.cast(await target(request, *params))
         return res
 
     async def serve(self, host: str, port: int):
@@ -132,3 +137,15 @@ class Freesia:
             pass
         finally:
             loop.close()
+
+    def register_group(self, group: Any) -> None:
+        """
+        Register :class:`freesia.groups.Group` to the app.
+
+        :param group: The instance of :class:`freesia.groups.Group`.
+        :return: None
+        """
+        if group.name in self.groups:
+            raise ValueError("The group `{}` has been registered!".format(group.name))
+        self.groups[group.name] = group
+        group.register(self)

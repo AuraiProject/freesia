@@ -9,6 +9,7 @@
 """
 from .app import Freesia
 from .utils import jsonify
+from .groups import Group
 
 from aiohttp.web import Response
 

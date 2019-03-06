@@ -27,7 +27,7 @@ async def jsonify(
         headers: LooseHeaders = None,
         content_type: str = 'application/json',
         dumps: Callable = asy_json_dump
-):
+) -> Response:
     if data is not sentinel:
         if text or body:
             raise ValueError(
