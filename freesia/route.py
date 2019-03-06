@@ -11,6 +11,27 @@ from aiohttp import web
 
 
 class AbstractRoute(ABC):
+    """
+    AbstractRoute can only be used if you want to replace the default :class:`Route`.
+    If you really want to do, you should inherit this class and
+    implement the methods :func:`__init__`, :func:`set_filter` it requires. Then replace the default :attr:`app.Freesia.route_cls`
+    with you own defined class before instantiating :class:`app.Freesia`. See example::
+
+        class CustomRoute(AbstractRoute):
+            def __init__(self, rule, methods, target, options):
+                pass
+
+            def set_filter(self, name, url_filter):
+                pass
+
+        Freesia.route_cls = CustomRoute
+
+    :param rule: The url rule of the route.
+    :param methods: The method list that this route can accept.
+    :param target: The handler function that handles the request.
+    :param options: Optional control parameters.
+    """
+
     @abstractmethod
     def __init__(self, rule: str, methods: Iterable[str], target: Callable[..., Any], options: MutableMapping):
         pass
@@ -21,6 +42,22 @@ class AbstractRoute(ABC):
 
 
 class AbstractRouter(ABC):
+    """
+    AbstractRouter can only be used if you want to replace the default :class:`Router`.
+    If you really want to do, you should inherit this class and
+    implement the methods :func:`add_route`, :func:`get` it requires. Then replace the default :attr:`app.Freesia.url_map_cls`
+    with you own defined class before instantiating :class:`app.Freesia`. See example::
+
+        class CustomRouter(AbstractRouter):
+            def add_route(self, route):
+                pass
+
+            def get(self, rule, method):
+                pass
+
+        Freesia.url_map_cls = CustomRouter
+    """
+
     @abstractmethod
     def add_route(self, route: AbstractRoute) -> None:
         pass
@@ -31,9 +68,18 @@ class AbstractRouter(ABC):
 
 
 class Route(AbstractRoute):
+    """
+    Default route class.
+
+    :param rule: The url rule of the route.
+    :param methods: The method list that this route can accept.
+    :param target: The handler function that handles the request.
+    :param options: Optional control parameters.
+    """
     is_static = False
     rule_syntax = re.compile("(\\\\*)"
                              "(?:<(?:(.*?):)?([a-zA-Z_][a-zA-Z_0-9]*)>)")
+
     url_filters = {
         "int": (r'-?\d+', int, lambda s: str(int(s))),
         "float": (r'-?[\d.]+', int, lambda s: str(float(s))),
@@ -70,11 +116,24 @@ class Route(AbstractRoute):
                 ))
 
     @classmethod
-    def set_filter(cls, name: str, url_filter: Tuple[str, Union[None, Callable], Union[None, Callable]]):
+    def set_filter(cls, name: str, url_filter: Tuple[str, Union[None, Callable], Union[None, Callable]]) -> None:
+        """
+        Set a custom filter to the route.
+
+        :param name: filter name
+        :param url_filter: A tuple that includ regex, in_filter and out_filter
+        :return: None
+        """
         cls.url_filters[name] = url_filter
 
     @classmethod
     def iter_token(cls, rule: str) -> Tuple[str, str]:
+        """
+        Traverse the rule and generate the prefix and param info.
+
+        :param rule: url rule to be iter
+        :return: A tuple that includ the url filter name and param name.
+        """
         offset, prefix = 0, ''
         for match in cls.rule_syntax.finditer(rule):
             prefix += rule[offset: match.start()]
@@ -93,6 +152,11 @@ class Route(AbstractRoute):
             yield prefix + rule[offset:], None
 
     def parse_pattern(self) -> None:
+        """
+        Parse the :attr:`rule` to get regex pattern then store in :attr:`regex_pattern`
+
+        :return: None
+        """
         for url_filter, name in self.iter_token(self.rule):
             if name is None:
                 self.regex_pattern += url_filter
@@ -110,16 +174,28 @@ class Route(AbstractRoute):
                 self.builder.append((name, out_filter))
 
     def param_check(self) -> bool:
+        """
+        Check if the number of parameters matches.
+
+        :return: bool
+        """
         p = signature(self.target).parameters
         if len(self.in_filters) != len(list(p.items())) - 1:
             # the first param is the instance of the :class:`Freesia.Request`
             return False
         return True
 
-    def match(self, rule: str, method: str) -> Union[None, List[Any]]:
+    def match(self, path: str, method: str) -> Union[None, List[Any]]:
+        """
+        Check that this route matches the incoming parameters.
+
+        :param path: path to be matched
+        :param method: the request method
+        :return: A List of the matching param or None.
+        """
         if method not in self.methods:
             return None
-        matching = re.fullmatch(self.regex_pattern, rule)
+        matching = re.fullmatch(self.regex_pattern, path)
         if matching is None:
             return None
         else:
@@ -134,11 +210,21 @@ class Route(AbstractRoute):
 
 
 class Router(AbstractRouter):
+    """
+    Default router.
+    """
+
     def __init__(self):
         self.static_url_map = {}
         self.method_map = {}
 
     def add_route(self, route: Route) -> None:
+        """
+        Add a route to the router.
+
+        :param route: the instance of the :class:`Route`
+        :return: None
+        """
         if route.is_static:
             self.static_url_map.setdefault(route.regex_pattern, [])
             self.static_url_map[route.regex_pattern].append(route)
@@ -147,12 +233,19 @@ class Router(AbstractRouter):
                 self.method_map.setdefault(m, [])
                 self.method_map[m].append(route)
 
-    def get_from_static_url(self, rule: str, method: str) -> Tuple[Callable, Tuple]:
-        if rule not in self.static_url_map:
+    def get_from_static_url(self, path: str, method: str) -> Tuple[Callable, Tuple]:
+        """
+        Match the static url. Throw a exception if not matches.
+
+        :param path: incoming path
+        :param method: the method of the request
+        :return: A tuple include the handler function and the params.
+        """
+        if path not in self.static_url_map:
             raise web.HTTPNotFound()
 
         allowed_methods = set()
-        for route in self.static_url_map[rule]:
+        for route in self.static_url_map[path]:
             for m in route.methods:
                 allowed_methods.add(m)
             if method in route.methods:
@@ -160,21 +253,28 @@ class Router(AbstractRouter):
         else:
             raise web.HTTPMethodNotAllowed(method, allowed_methods)
 
-    def get(self, rule: str, method: str) -> Tuple[Callable, Tuple]:
-        if rule in self.static_url_map:
-            return self.get_from_static_url(rule, method)
+    def get(self, path: str, method: str) -> Tuple[Callable, Tuple]:
+        """
+        Match giving path. Throw a exception if not matches.
+
+        :param path: incoming path.
+        :param method: the method of the request.
+        :return: A tuple include the handler function and the params.
+        """
+        if path in self.static_url_map:
+            return self.get_from_static_url(path, method)
 
         if method not in self.method_map:
             raise web.HTTPNotFound()
 
         for r in self.method_map[method]:
-            params = r.match(rule, method)
+            params = r.match(path, method)
             if params:
                 return r.target, params
 
         allowed_methods = set()
         for r in itertools.chain(*self.method_map.values()):
-            if r.match(rule, method):
+            if r.match(path, method):
                 allowed_methods.add(r.method)
         if allowed_methods:
             raise web.HTTPMethodNotAllowed(method, allowed_methods)

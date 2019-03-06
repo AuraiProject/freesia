@@ -11,14 +11,29 @@ from .route import Route, Router
 
 
 class Freesia:
+    """
+    The main class of this framework.
+    """
+    #: Default route class.
+    #: See more information in :class:`freesia.route.Route` and :class:`freesia.route.AbstractRoute`.
     route_cls = Route
+    #: Default router class.
+    #: See more information in :class:`freesia.route.Router` and :class:`freesia.route.AbstractRouter`.
     url_map_cls = Router
+    #: collected routes
     rules = []
 
     def __init__(self):
         self.url_map = self.url_map_cls()
 
     def route(self, rule: str, **options: Any) -> Callable:
+        """
+        Register the new route to the framework.
+
+        :param rule: url rule
+        :param options: optional params
+        :return: a decorator to collect the target function
+        """
         options.setdefault("method", ("GET",))
         methods = options["method"]
 
@@ -29,20 +44,50 @@ class Freesia:
         return decorator
 
     def set_filter(self, name: str, url_filter: Tuple[str, Union[None, Callable], Union[None, Callable]]):
+        """
+        Add url filter.
+        For more information see :attr:`route_cls`
+
+        :param name: name of the url filter
+        :param url_filter: A tuple that includ regex, in_filter and out_filter
+        :return: None
+        """
         self.route_cls.set_filter(name, url_filter)
 
     def add_route(self, rule: str, method: str, target: Callable, options: MutableMapping):
+        """
+        Internal method of :func:`route`.
+
+        :param rule: url rule
+        :param method: the method that the target function should handles.
+        :param target: target function
+        :param options: optional prams
+        :return: None
+        """
         r = self.route_cls(rule, method, target, options)
         self.rules.append(r)
         self.url_map.add_route(r)
         return r
 
     async def handler(self, request: web.BaseRequest):
+        """
+        hands out a incoming request
+
+        :param request: the instance of :class:`aiohttp.web.BaseRequest`
+        :return: result
+        """
         print(request.path)
         target, params = self.url_map.get(request.path, request.method)
         return await target(request, *params)
 
     async def serve(self, host: str, port: int):
+        """
+        Start to serve. Should be placed in a event loop.
+
+        :param host: host
+        :param port: port
+        :return: None
+        """
         server = web.Server(self.handler)
         runner = web.ServerRunner(server)
         await runner.setup()
@@ -55,6 +100,9 @@ class Freesia:
             await asyncio.sleep(1000 * 3600)
 
     def run(self, host="localhost", port=8080):
+        """
+        start a async serve
+        """
         loop = asyncio.get_event_loop()
         try:
             loop.run_until_complete(self.serve(host, port))
