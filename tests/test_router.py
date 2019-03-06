@@ -56,3 +56,14 @@ class RouterTestCase(unittest.TestCase):
         router.add_route(r)
         with self.assertRaises(HTTPMethodNotAllowed):
             router.get("/", "POST")
+
+    def test_build_url(self):
+        r = Route("/test/<float:age>", ["GET"], temp, {
+            "endpoint": "test",
+            "checking_param": False
+        })
+        router = Router()
+        router.add_route(r)
+        self.assertEqual("/test/1.0", router.build_url("test", [1.0]))
+        with self.assertRaises(ValueError):
+            router.build_url("test", ["wrong"])

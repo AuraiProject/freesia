@@ -61,3 +61,11 @@ class RouteTestCase(unittest.TestCase):
             with self.subTest(not_matching=r.not_matching):
                 t, _ = route.match(r.not_matching, "GET")
                 self.assertIsNone(t)
+
+    def test_build_url(self):
+        route = Route("/test/<int:age>", ["GET"], temp, {
+            "checking_param": False
+        })
+        self.assertEqual("/test/1", route.build_url([1]))
+        with self.assertRaises(ValueError):
+            route.build_url(["error"])
