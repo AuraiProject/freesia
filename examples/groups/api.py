@@ -1,4 +1,5 @@
 from freesia import Group, jsonify
+from freesia.utils import redirect
 
 api = Group("api", "/api")
 
@@ -16,3 +17,8 @@ async def name(request, name):
         })
     else:
         return await jsonify(None)
+
+
+@api.route("/redirect")
+async def r(request):
+    return redirect("/")
