@@ -31,7 +31,7 @@ class RouteTestCase(unittest.TestCase):
         if rules is None:
             rules = test_rules
         for r in rules:
-            route = Route(r.rule, "GET", temp, {
+            route = Route(r.rule, ["GET"], temp, {
                 "checking_param": False
             })
             with self.subTest(expect=r.regex, actual=route.regex_pattern):
@@ -52,7 +52,7 @@ class RouteTestCase(unittest.TestCase):
 
     def test_url_match(self):
         for r in test_rules:
-            route = Route(r.rule, "GET", temp, {
+            route = Route(r.rule, ["GET"], temp, {
                 "checking_param": False
             })
             with self.subTest(matching=r.matching):

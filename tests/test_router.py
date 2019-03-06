@@ -10,7 +10,7 @@ async def temp():
 
 class RouterTestCase(unittest.TestCase):
     def test_add_static_route(self):
-        r = Route("/", "GET", temp, {
+        r = Route("/", ["GET"], temp, {
             "checking_param": False
         })
         router = Router()
@@ -49,7 +49,7 @@ class RouterTestCase(unittest.TestCase):
             router.get("/hello/not/name", "GET")
 
     def test_method_not_allowed(self):
-        r = Route("/", "GET", temp, {
+        r = Route("/", ["GET"], temp, {
             "checking_param": False
         })
         router = Router()
