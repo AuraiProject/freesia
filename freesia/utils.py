@@ -18,6 +18,11 @@ async def asy_json_dump(data):
     return await loop.run_in_executor(block_pool_exc, lambda: json.dumps(data))
 
 
+async def asy_json_load(data):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(block_pool_exc, lambda: json.loads(data))
+
+
 async def jsonify(
         data: Any = sentinel, *,
         text: str = None,

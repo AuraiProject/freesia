@@ -11,6 +11,7 @@ from .app import Freesia
 from .utils import jsonify
 from .group import Group
 from .view import MethodView
+from .session import get_session, set_up_session
 
 from aiohttp.web import Response
 
