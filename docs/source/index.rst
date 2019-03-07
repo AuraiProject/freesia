@@ -30,6 +30,11 @@ view.py
 .. automodule:: freesia.view
    :members:
 
+session.py
+++++++++++++++++++++
+.. automodule:: freesia.session
+   :members:
+
 Indices and tables
 ------------------------
 

@@ -16,7 +16,7 @@ def load_requirements(path="./Pipfile.lock", default=True):
     return rmt_list
 
 
-def load_long_description(path="./README.rst"):
+def load_long_description(path="./README.md"):
     with open(path, "rt") as f:
         return f.read()
 
