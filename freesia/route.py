@@ -97,6 +97,7 @@ class Route(AbstractRoute):
             raise ValueError("The param `methods` should be wrapped with the container.")
 
         self.rule = rule
+        methods = map(lambda s: s.upper(), methods)
         self.methods = set(methods)
         self.target = target
         self.endpoint = target.__name__
@@ -250,6 +251,7 @@ class Router(AbstractRouter):
             self.static_url_map[route.regex_pattern].append(route)
         else:
             for m in route.methods:
+                m = m.upper()
                 self.method_map.setdefault(m, [])
                 self.method_map[m].append(route)
 

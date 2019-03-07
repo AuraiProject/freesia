@@ -10,6 +10,7 @@
 from .app import Freesia
 from .utils import jsonify
 from .group import Group
+from .view import MethodView
 
 from aiohttp.web import Response
 

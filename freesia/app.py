@@ -61,17 +61,29 @@ class Freesia:
         """
         self.route_cls.set_filter(name, url_filter)
 
-    def add_route(self, rule: str, method: Iterable[str], target: Callable, options: MutableMapping) -> None:
+    def add_route(self, rule: str, methods: Iterable[str] = None,
+                  target: Callable = None,
+                  options: MutableMapping = None,
+                  view_func: Callable = None) -> None:
         """
         Internal method of :func:`route`.
 
         :param rule: url rule
-        :param method: the method that the target function should handles.
+        :param methods: the method that the target function should handles.
         :param target: target function
         :param options: optional prams
+        :param view_func: the class based view. See :class:`freesia.view.View`.
         :return: None
         """
-        r = self.route_cls(rule, method, target, options)
+        if view_func:
+            if hasattr(view_func, "methods"):
+                methods = getattr(view_func, "methods")
+            target = view_func
+
+        if not callable(target):
+            raise ValueError("Invalid target function {}.".format(target.__name__))
+
+        r = self.route_cls(rule, methods or ["GET"], target, options or {})
         self.rules.append(r)
         self.url_map.add_route(r)
 
