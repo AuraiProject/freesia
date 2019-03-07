@@ -8,7 +8,12 @@ import json
 
 from aiohttp.helpers import sentinel
 from aiohttp.typedefs import LooseHeaders
-from aiohttp.web import Response
+from aiohttp.web import Response as aioResponse
+
+
+class Response(aioResponse):
+    pass
+
 
 block_pool_exc = ThreadPoolExecutor()
 

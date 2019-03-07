@@ -5,7 +5,7 @@ Freesia is a concise and lightweight async web framework. Its api is inspired by
 
 ## Installation
 ```bash
-pip3 install freesia
+pip install async-freesia
 ```
 
 ## Docs

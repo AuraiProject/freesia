@@ -7,9 +7,9 @@ from typing import Any, Callable, MutableMapping, Tuple, Union, Container, Sized
 from pprint import pprint as print
 
 from aiohttp import web
-from aiohttp.web import Response
 
 from .route import Route, Router
+from .utils import Response
 
 
 class Freesia:

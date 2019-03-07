@@ -1,19 +1,13 @@
 import json
-from setuptools import setup, find_packages
 
-from freesia import AUTHOR, VERSION
+from setuptools import setup, find_packages
 
 
 def load_requirements(path="./Pipfile.lock", default=True):
     with open(path, "rt") as f:
         rmt_obj = json.loads(f.read())
     rmt_obj = rmt_obj["default"] if default else rmt_obj["develop"]
-    rmt_list = []
-    for key, value in rmt_obj.items():
-        rmt_list.append(
-            key + value["version"]
-        )
-    return rmt_list
+    return rmt_obj.keys()
 
 
 def load_long_description(path="./README.md"):
@@ -21,8 +15,17 @@ def load_long_description(path="./README.md"):
         return f.read()
 
 
+def get_package_info(lines, identy):
+    return list(filter(lambda s: identy in s, lines))[0].split('=', 1)[-1].strip(' "\n')
+
+
+with open('./freesia/__init__.py', encoding='utf8') as f:
+    lines = f.readlines()
+    AUTHOR = get_package_info(lines, "__author__")
+    VERSION = get_package_info(lines, "__version__")
+
 setup(
-    name="freesia",
+    name="async_freesia",
     version=VERSION,
     author=AUTHOR,
     keywords="freesia, framework, backend",
