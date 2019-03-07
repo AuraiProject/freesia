@@ -194,7 +194,20 @@ class Freesia:
         self.groups[group.name] = group
         group.register(self)
 
-    def use(self, middleware: Iterable):
+    def use(self, middleware: Iterable) -> None:
+        """
+        Register the middleware for this framework. See example::
+
+            async def middleware(request, handler):
+                print("enter middleware")
+                return await handler()
+
+            app = Freesia()
+            app.use([middleware])
+
+        :param middleware: A tuple of the middleware.
+        :return: None
+        """
         for m in middleware:
             if not iscoroutinefunction(m):
                 raise ValueError("Middleware {} should be awaitable.".format(m.__name__))

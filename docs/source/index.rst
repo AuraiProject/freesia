@@ -20,7 +20,15 @@ route.py
 .. automodule:: freesia.route
    :members:
 
+groups.py
+++++++++++++++++++++
+.. automodule:: freesia.group
+   :members:
 
+view.py
+++++++++++++++++++++
+.. automodule:: freesia.view
+   :members:
 
 Indices and tables
 ------------------------

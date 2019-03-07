@@ -20,6 +20,7 @@ async def middleware2(request, handler):
     print("enter middleware2")
     res = await handler()
     print("exit middleware2")
+    return res + " :D"
 
 
 app.use([middleware1, middleware2])
