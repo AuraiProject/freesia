@@ -4,7 +4,7 @@ This module implements the async app of the web framework.
 import asyncio
 from inspect import iscoroutinefunction
 from typing import Any, Callable, MutableMapping, Tuple, Union, Container, Sized, Iterable
-from pprint import pprint as print
+from pprint import pprint
 
 from aiohttp import web
 
@@ -141,7 +141,7 @@ class Freesia:
         :param request: the instance of :class:`aiohttp.web.BaseRequest`
         :return: result
         """
-        print(request.path)
+        pprint(request.path)
 
         async def user_handler():
             return await self.dispatch_request(request)
@@ -165,6 +165,14 @@ class Freesia:
         site = web.TCPSite(runner, host, port)
         await site.start()
 
+        print("""
+ _______ .______       _______     _______.     _______. __       ___       __  
+|   ____||   _  \     |   ____|   /       |    /       ||  |     /   \     |  | 
+|  |__   |  |_)  |    |  |__     |   (----`   |   (----`|  |    /  ^  \    |  | 
+|   __|  |      /     |   __|     \   \        \   \    |  |   /  /_\  \   |  | 
+|  |     |  |\  \----.|  |____.----)   |   .----)   |   |  |  /  _____  \  |__| 
+|__|     | _| `._____||_______|_______/    |_______/    |__| /__/     \__\ (__) 
+            """)
         print("============ Servint on http://{}:{}/ ============".format(host, port))
 
         while True:
