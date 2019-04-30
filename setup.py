@@ -31,7 +31,7 @@ setup(
     keywords="freesia, framework, backend",
     description="A concise and lightweight web framework.✨",
     long_description=load_long_description(),
-    packages=find_packages(where='freesia'),
+    packages=find_packages(),
     install_requires=load_requirements(),
     include_package_data=True,
     test_suite="tests",

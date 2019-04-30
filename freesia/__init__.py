@@ -7,7 +7,7 @@
     :copyright: © 2019 by ArianX.
     :license: MIT, see LICENSE for more details.
 """
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 __author__ = "ArianX"
 
 from .app import Freesia
